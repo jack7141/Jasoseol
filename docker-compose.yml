@@ -1,0 +1,12 @@
+version: '3'
+services:
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: music-app
+    environment:
+      - PROJECT_ENV="base"
+      - TZ=Asia/Seoul
+    ports:
+      - "8000:80"
