@@ -1,5 +1,5 @@
-# Music Manager API Server
-Music Manage 서버(Music Manager Server)
+# Chating Server
+Chating 서버(Chating Server)
 
 ## Tech
 * [Django] - Python 웹 애플리케이션 프레임워크
@@ -7,7 +7,7 @@ Music Manage 서버(Music Manager Server)
 * [Django Rest Swagger] - [Django Rest Framework]을 위한 문서 생성기
 
 ## System Requirements
-[python] 3.10 사용 
+[python] 3.10 사용
 
 ## API Document
 
