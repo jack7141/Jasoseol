@@ -18,6 +18,10 @@ API에 대한 문서는 swagger를 통해 자동생성되도록 되어있습니�
 Swagger API 문서 주소는 `/api/v{version}/swagger`입니다.
 > 예) /api/v1/swagger
 
+
+실행
+> DJANGO_SETTINGS_MODULE=api_backend.settings uvicorn api_backend.asgi:application --host localhost --port 8000 --reload
+
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 
    [fount logo]: <https://fount.co/wp-content/uploads/2017/07/fount-ci@2x.png>

@@ -27,6 +27,7 @@ ALLOWED_HOSTS = ['*']
 INSTALLED_APPS = [
     'channels',
     'daphne',
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -40,6 +41,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -50,6 +52,11 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'api_backend.urls'
+
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+]
 
 TEMPLATES = [
     {
@@ -67,6 +74,9 @@ TEMPLATES = [
     },
 ]
 
+AUTH_USER_MODEL = 'user.User'
+
+
 WSGI_APPLICATION = 'api_backend.wsgi.application'
 
 
@@ -80,6 +90,8 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+STATIC_ROOT = '/static/'
 
 CACHES = {
     "default": {

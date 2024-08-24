@@ -25,3 +25,4 @@ class ChatRoomViewSet(MappingViewSetMixin,
     permission_classes = [AllowAny, ]
     queryset = ChatRoom.objects.all()
     serializer_class = ChatRoomSerializer
+
