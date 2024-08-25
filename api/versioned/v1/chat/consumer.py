@@ -36,15 +36,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             await self.add_user_to_room(self.room_id, self.user.id)
 
-            connected_users_count = await self.get_connected_users_count(self.room_id)
-
             await self.channel_layer.group_send(
                 self.group_name,
                 {
                     'type': 'user_join',
                     'user_id': str(self.user),
                     'username': self.user.username,
-                    'connected_users_count': connected_users_count
+                    'connected_users_count': await self.get_connected_users_count(self.room_id)
                 }
             )
 
@@ -68,14 +66,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             await self.remove_user_from_room(self.room_id, self.user.id)
 
-            connected_users_count = await self.get_connected_users_count(self.room_id)
-
             await self.channel_layer.group_send(
                 self.group_name,
                 {
                     'type': 'user_leave',
                     'username': self.user.username,
-                    'connected_users_count': connected_users_count
+                    'connected_users_count': await self.get_connected_users_count(self.room_id)
                 }
             )
         except Exception as e:
@@ -196,7 +192,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def save_message_to_db(self, message):
-        """Save a message to the database."""
         chat_room = ChatRoom.objects.get(id=message['room_id'])
         user = User.objects.get(id=message['user_id'])
         Message.objects.create(

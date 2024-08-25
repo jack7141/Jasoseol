@@ -74,7 +74,6 @@ TEMPLATES = [
     },
 ]
 
-AUTH_USER_MODEL = 'user.User'
 
 
 WSGI_APPLICATION = 'api_backend.wsgi.application'
