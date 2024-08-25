@@ -104,7 +104,7 @@ CACHES = {
 }
 
 CACHE_TIMEOUT = 3000
-
+TIME_ZONE = 'Asia/Seoul'
 
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
