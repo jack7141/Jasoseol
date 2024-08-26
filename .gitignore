@@ -51,6 +51,7 @@ jspm_packages
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
+
 *.py[cod]
 *$py.class
 
@@ -235,3 +236,6 @@ celerybeat-schedule.db
 public/download
 */db.sqlite3
 mysql
+
+*.pyc
+__pycache__/

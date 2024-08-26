@@ -1,5 +1,6 @@
 from datetime import timedelta, timezone
 
+import arrow
 from django.db import models
 
 from api.bases.user.models import User
@@ -10,10 +11,6 @@ class ChatRoom(models.Model):
     title = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     last_message_at = models.DateTimeField(auto_now=True)
-
-    def active_users_count(self):
-        thirty_minutes_ago = timezone.now() - timedelta(minutes=30)
-        return self.users.filter(userroomrelation__connected_at__gte=thirty_minutes_ago).count()
 
 
 class Message(models.Model):
