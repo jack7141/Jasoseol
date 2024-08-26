@@ -6,9 +6,27 @@ services:
       dockerfile: Dockerfile
     image: jasoseol
     environment:
-      - PROJECT_ENV=base
+      - PROJECT_ENV=local
       - TZ=Asia/Seoul
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=changeme
+      - CONN_MAX_AGE=600
     ports:
       - "8000:8000"
     volumes:
       - .:/webapp/server
+    depends_on:
+      - redis
+
+
+  redis:
+    image: redis:6.2
+    command: ["redis-server", "--requirepass", "changeme"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
