@@ -2,18 +2,14 @@ import datetime
 import uuid
 import arrow
 from asgiref.sync import sync_to_async
-
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 import json
-
+from django.db import transaction
 from django.core.cache import cache
-
+from django.core.exceptions import ObjectDoesNotExist
 from api.bases.chat.models import ChatRoom, ChatRoomParticipant, Message
-from common.exceptions import ExpiredApiCacheData
-from common.utils import CacheDataManager
 from api.bases.user.models import User
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,20 +20,21 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         try:
             self.room_id = self.scope['url_route']['kwargs']['room_id']
             user_id = self.scope['url_route']['kwargs']['user_id']
-            self.group_name = self.get_group_name(self.room_id)
+            self.group_name = f"chat_room_{self.room_id}"
 
             if not await self.check_room_exists(self.room_id):
                 raise ValueError('Chat room does not exist.')
 
-            await self.channel_layer.group_add(self.group_name, self.channel_name)
             await self.accept()
-
+            await self.channel_layer.group_add(self.group_name, self.channel_name)
             self.is_connected = True
 
+            self.user = await self.get_user_or_404(user_id)
+            await self.add_user_to_room(self.room_id, self.user.id)
+            await self.update_user_last_active(self.user.id)
+
+            # Notify the group that a user has joined
             if self.is_connected:
-                self.user = await self.get_user_or_404(user_id)
-                await self.update_user_last_active(self.user.id)
-                await self.add_user_to_room(self.room_id, self.user.id)
                 await self.channel_layer.group_send(
                     self.group_name,
                     {
@@ -48,31 +45,23 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     }
                 )
 
-                recent_messages = await self.get_recent_messages_from_cache()
-                for message in recent_messages:
-                    message['user_id'] = str(message['user_id'])
-                    await self.send_json(message)
+                # Send recent and previous messages to the connected user
+                await self.send_cached_and_previous_messages()
 
-                previous_messages = await self.get_previous_messages(self.room_id)
-                for message in previous_messages:
-                    await self.send_json(message)
-
-        except ValueError as e:
+        except (ValueError, ObjectDoesNotExist) as e:
             logger.error(f"Connection error: {str(e)}")
-            await self.send_json({'error': str(e)})
+            if self.is_connected:
+                await self.send_json({'error': str(e)})
             await self.close()
         except Exception as e:
             logger.error(f"Unexpected error during connection: {str(e)}")
             await self.close()
 
     async def disconnect(self, close_code):
-        if hasattr(self, 'room_id') and hasattr(self, 'user') and self.is_connected:
+        if self.is_connected:
             try:
-                group_name = self.get_group_name(self.room_id)
-                await self.channel_layer.group_discard(group_name, self.channel_name)
-
+                await self.channel_layer.group_discard(self.group_name, self.channel_name)
                 await self.remove_user_from_room(self.room_id, self.user.id)
-
                 await self.channel_layer.group_send(
                     self.group_name,
                     {
@@ -82,17 +71,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     }
                 )
             except Exception as e:
-                logger.error(f'Error in disconnect: {str(e)}')
-        self.is_connected = False
+                logger.error(f"Error during disconnect: {str(e)}")
+            finally:
+                self.is_connected = False
 
     async def receive_json(self, content):
         if not self.is_connected:
             return
 
         try:
-            message = content['message']
-
-            await self.update_user_last_active(self.user.id)
+            message = content.get('message', '').strip()
+            if not message:
+                return
 
             redis_message = {
                 'room_id': self.room_id,
@@ -103,19 +93,22 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             }
 
             await self.save_message(redis_message)
+            await self.update_user_last_active(self.user.id)
 
-            await self.channel_layer.group_send(
-                self.group_name,
-                {
-                    'type': 'receive_group_message',
-                    'message': message,
-                    'user_id': str(self.user.id),
-                    'username': self.user.username
-                }
-            )
+            if self.is_connected:
+                await self.channel_layer.group_send(
+                    self.group_name,
+                    {
+                        'type': 'receive_group_message',
+                        'message': message,
+                        'user_id': str(self.user.id),
+                        'username': self.user.username
+                    }
+                )
         except Exception as e:
             logger.error(f"Error in receive_json: {str(e)}")
-            await self.send_json({'error': 'Failed to process message'})
+            if self.is_connected:
+                await self.send_json({'error': 'Failed to process message'})
 
     async def user_join(self, event):
         if self.is_connected:
@@ -144,7 +137,23 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 })
             except Exception as e:
                 logger.error(f"Error in receive_group_message: {str(e)}")
-                await self.send_json({'error': 'Failed to send message'})
+                if self.is_connected:
+                    await self.send_json({'error': 'Failed to send message'})
+
+    async def send_cached_and_previous_messages(self):
+        try:
+            recent_messages = await self.get_recent_messages_from_cache()
+            for message in recent_messages:
+                message['user_id'] = str(message['user_id'])
+                if self.is_connected:
+                    await self.send_json(message)
+
+            previous_messages = await self.get_previous_messages(self.room_id)
+            for message in previous_messages:
+                if self.is_connected:
+                    await self.send_json(message)
+        except Exception as e:
+            logger.error(f"Error sending cached and previous messages: {str(e)}")
 
     def get_group_name(self, room_id):
         return f"chat_room_{room_id}"
@@ -170,8 +179,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             raise ValueError('User does not exist.')
 
     @database_sync_to_async
+    @transaction.atomic
     def add_user_to_room(self, room_id, user_id):
-        room = ChatRoom.objects.get(id=room_id)
+        room = ChatRoom.objects.select_for_update().get(id=room_id)
         ChatRoomParticipant.objects.update_or_create(
             user_id=user_id,
             chat_room=room,
@@ -184,16 +194,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         return ChatRoomParticipant.objects.filter(chat_room=room_id, joined_at__gte=thirty_minutes_ago).count()
 
     @database_sync_to_async
+    @transaction.atomic
     def remove_user_from_room(self, room_id, user_id):
         ChatRoomParticipant.objects.filter(user=user_id, chat_room=room_id).delete()
 
     async def get_recent_messages_from_cache(self):
         unique_key = f'{self.group_name}_messages'
-        return cache.get(unique_key, [])
+        return await sync_to_async(cache.get)(unique_key, [])
 
     async def save_message(self, redis_message):
         unique_key = f'{self.group_name}_messages'
-
         cached_messages = await sync_to_async(cache.get)(unique_key, [])
 
         if len(cached_messages) >= 20:
@@ -204,6 +214,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await sync_to_async(cache.set)(unique_key, cached_messages, timeout=None)
 
     @database_sync_to_async
+    @transaction.atomic
     def save_message_to_db(self, message):
         chat_room = ChatRoom.objects.get(id=message['room_id'])
         user = User.objects.get(id=message['user_id'])
@@ -215,7 +226,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         )
 
     @database_sync_to_async
+    @transaction.atomic
     def update_user_last_active(self, user_id):
-        user = User.objects.get(id=user_id)
-        user.last_active = arrow.now('Asia/Seoul').datetime
-        user.save()
+        try:
+            user = User.objects.select_for_update().get(id=user_id)
+            user.last_active = arrow.now('Asia/Seoul').datetime
+            user.save()
+        except User.DoesNotExist:
+            logger.error(f"Failed to update last active: User {user_id} does not exist.")

@@ -4,9 +4,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: music-app
+    image: jasoseol
     environment:
-      - PROJECT_ENV="base"
+      - PROJECT_ENV=base
       - TZ=Asia/Seoul
     ports:
-      - "8000:80"
+      - "8000:8000"
+    volumes:
+      - .:/webapp/server
