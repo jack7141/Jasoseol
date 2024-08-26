@@ -47,8 +47,6 @@ class ChatRoomParticipantViewSet(MappingViewSetMixin,
 
     def get_participants(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(queryset, many=True)
-        user_ids = [item['user'] for item in serializer.data]
-        users = User.objects.filter(id__in=user_ids)
+        users = User.objects.filter(id__in=queryset.values_list('user_id', flat=True))
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
