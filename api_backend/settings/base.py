@@ -220,31 +220,3 @@ DATABASES = get_secret('DATABASES')
 
 DEFAULT_CHARSET = 'utf-8'
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'logstash': {
-            'level': 'DEBUG',
-            'class': 'logstash.TCPLogstashHandler',
-            'host': '172.30.1.1',
-            'port': 50000,
-            'version': 1,
-            'message_type': 'django',
-            'fqdn': True,
-            'tags': ['django'],
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['logstash'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-        'django.request': {
-            'handlers': ['logstash'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-    },
-}

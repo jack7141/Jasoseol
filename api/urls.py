@@ -27,16 +27,15 @@ for path, dirs, files, in os.walk(folder):
 
 if settings.DEBUG:
     for version, patterns in version_map_dict.items():
-        title = 'Cafe Manager API'
+        title = 'Jasoseol Chat API'
         base_url = '/api'
         sv = get_schema_view(
             openapi.Info(
                 title=title,
                 default_version=version,
-                description=f"User Manager {version} API List",
+                description=f"Jasoseol Chat {version} API List",
                 terms_of_service="https://www.google.com/policies/terms/",
                 contact=openapi.Contact(email="ghl92479@gmail.com"),
-                license=openapi.License(name="Backend-KR License"),
             ),
             permission_classes=(permissions.AllowAny,),
         )
