@@ -28,5 +28,19 @@ services:
     volumes:
       - redis_data:/data
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://django:8000
+      - REACT_WS_APP_API_URL=ws://django:8000
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - django
+
 volumes:
   redis_data:

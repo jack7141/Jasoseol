@@ -18,7 +18,7 @@ function HomePage() {
     e.preventDefault();
     if (username.trim()) {
       try {
-        const response = await axios.post('http://192.168.219.103:8000/v1/user/', {
+        const response = await axios.post('${process.env.REACT_WS_APP_API_URL}/v1/user/', {
           username: username
         }, {
           headers: {

@@ -20,7 +20,7 @@ function ChatRoomPage() {
 
   const fetchRoomInfo = useCallback(async () => {
     try {
-      const response = await axios.get(`http://192.168.219.103:8000/v1/chat/${id}`);
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/v1/chat/${id}`);
       setRoomName(response.data.title);
     } catch (error) {
       console.error('Error fetching room info:', error);
@@ -30,7 +30,7 @@ function ChatRoomPage() {
 
   const fetchActiveUsers = useCallback(async () => {
     try {
-      const response = await axios.get(`http://192.168.219.103:8000/v1/chat/${id}/users`);
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/v1/chat/${id}/users`);
       setActiveUsers(response.data);
     } catch (error) {
       console.error('Error fetching active users:', error);
@@ -54,7 +54,7 @@ function ChatRoomPage() {
       return;
     }
 
-    websocket.current = new WebSocket(`ws://192.168.219.103:8000/ws/room/${id}/messages/${userId}`);
+    websocket.current = new WebSocket(`${process.env.REACT_WS_APP_API_URL}/ws/room/${id}/messages/${userId}`);
 
     websocket.current.onopen = () => {
       console.log('WebSocket Connected');

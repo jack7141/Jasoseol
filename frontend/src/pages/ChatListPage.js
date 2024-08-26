@@ -22,7 +22,7 @@ function ChatListPage() {
 
   const fetchChats = async () => {
     try {
-      const response = await axios.get('http://192.168.219.103:8000/v1/chat/', {
+      const response = await axios.get('${process.env.REACT_APP_API_URL}/v1/chat/', {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -36,7 +36,7 @@ function ChatListPage() {
 
   const fetchActiveUsers = async () => {
     try {
-      const response = await axios.get('http://192.168.219.103:8000/v1/user/active', {
+      const response = await axios.get('${process.env.REACT_APP_API_URL}/v1/user/active', {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -52,7 +52,7 @@ function ChatListPage() {
     e.preventDefault();
     if (newChatTitle.trim()) {
       try {
-        const response = await axios.post('http://192.168.219.103:8000/v1/chat/', {
+        const response = await axios.post('${process.env.REACT_APP_API_URL}/v1/chat/', {
           title: newChatTitle
         }, {
           headers: {
@@ -70,7 +70,7 @@ function ChatListPage() {
 
   const deleteChat = async (chatId) => {
     try {
-      await axios.delete(`http://192.168.219.103:8000/v1/chat/${chatId}`, {
+      await axios.delete(`${process.env.REACT_APP_API_URL}/v1/chat/${chatId}`, {
         headers: {
           'Content-Type': 'application/json'
         }
