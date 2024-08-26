@@ -24,20 +24,20 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         try:
             self.room_id = self.scope['url_route']['kwargs']['room_id']
             user_id = self.scope['url_route']['kwargs']['user_id']
-            self.group_name = f"chat_room_{self.room_id}"
+            self.group_name = self.get_group_name(self.room_id)
 
             if not await self.check_room_exists(self.room_id):
                 raise ValueError('Chat room does not exist.')
 
             await self.channel_layer.group_add(self.group_name, self.channel_name)
             await self.accept()
+
             self.is_connected = True
 
-            self.user = await self.get_user_or_404(user_id)
-            await self.update_user_last_active(self.user.id)
-            await self.add_user_to_room(self.room_id, self.user.id)
-
             if self.is_connected:
+                self.user = await self.get_user_or_404(user_id)
+                await self.update_user_last_active(self.user.id)
+                await self.add_user_to_room(self.room_id, self.user.id)
                 await self.channel_layer.group_send(
                     self.group_name,
                     {
@@ -66,7 +66,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.close()
 
     async def disconnect(self, close_code):
-        if hasattr(self, 'room_id') and hasattr(self, 'user'):
+        if hasattr(self, 'room_id') and hasattr(self, 'user') and self.is_connected:
             try:
                 group_name = self.get_group_name(self.room_id)
                 await self.channel_layer.group_discard(group_name, self.channel_name)
@@ -146,8 +146,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 logger.error(f"Error in receive_group_message: {str(e)}")
                 await self.send_json({'error': 'Failed to send message'})
 
-    @staticmethod
-    def get_group_name(room_id):
+    def get_group_name(self, room_id):
         return f"chat_room_{room_id}"
 
     @database_sync_to_async
