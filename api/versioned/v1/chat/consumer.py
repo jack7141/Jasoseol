@@ -92,7 +92,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         try:
             message = content['message']
 
-            await self.update_user_last_active(self.room_id, self.user.id)
+            await self.update_user_last_active(self.user.id)
 
             redis_message = {
                 'room_id': self.room_id,
