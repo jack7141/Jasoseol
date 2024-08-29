@@ -9,6 +9,8 @@ from django.db import transaction
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from api.bases.chat.models import ChatRoom, ChatRoomParticipant, Message
+from common.exceptions import ExpiredApiCacheData
+from common.middleware import RedisCacheASGIMiddleware
 from api.bases.user.models import User
 import logging
 
@@ -33,8 +35,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.add_user_to_room(self.room_id, self.user.id)
             await self.update_user_last_active(self.user.id)
 
-            # Notify the group that a user has joined
             if self.is_connected:
+                self.user = await self.get_user_or_404(user_id)
+                await self.update_user_last_active(self.user.id)
+                await self.add_user_to_room(self.room_id, self.user.id)
+
+                middleware = RedisCacheASGIMiddleware(None)
+                messages = await middleware.get_previous_messages(self.room_id)
+                for message in messages:
+                    await self.send_json(message)
                 await self.channel_layer.group_send(
                     self.group_name,
                     {
@@ -44,11 +53,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         'connected_users_count': await self.get_connected_users_count(self.room_id)
                     }
                 )
-
-                # Send recent and previous messages to the connected user
-                await self.send_cached_and_previous_messages()
-
-        except (ValueError, ObjectDoesNotExist) as e:
             logger.error(f"Connection error: {str(e)}")
             if self.is_connected:
                 await self.send_json({'error': str(e)})
@@ -60,8 +64,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def disconnect(self, close_code):
         if self.is_connected:
             try:
-                await self.channel_layer.group_discard(self.group_name, self.channel_name)
-                await self.remove_user_from_room(self.room_id, self.user.id)
+                group_name = self.get_group_name(self.room_id)
+                await self.channel_layer.group_discard(group_name, self.channel_name)
+
+                # await self.remove_user_from_room(self.room_id, self.user.id)
+
                 await self.channel_layer.group_send(
                     self.group_name,
                     {
@@ -84,27 +91,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             if not message:
                 return
 
-            redis_message = {
-                'room_id': self.room_id,
-                'user_id': str(self.user.id),
-                'sender_name': self.user.username,
-                'message': message,
-                'created_at': datetime.datetime.now().isoformat()
-            }
-
-            await self.save_message(redis_message)
-            await self.update_user_last_active(self.user.id)
-
-            if self.is_connected:
-                await self.channel_layer.group_send(
-                    self.group_name,
-                    {
-                        'type': 'receive_group_message',
-                        'message': message,
-                        'user_id': str(self.user.id),
-                        'username': self.user.username
-                    }
-                )
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'receive_group_message',
+                    'message': message,
+                    'user_id': str(self.user.id),
+                    'username': self.user.username
+                }
+            )
         except Exception as e:
             logger.error(f"Error in receive_json: {str(e)}")
             if self.is_connected:
@@ -163,15 +158,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         return ChatRoom.objects.filter(id=room_id).exists()
 
     @database_sync_to_async
-    def get_previous_messages(self, room_id, last_message_id=None):
-        query = Message.objects.filter(chat_room=room_id).order_by('-created_at')
-        if last_message_id:
-            last_message = Message.objects.get(id=last_message_id)
-            query = query.filter(created_at__lt=last_message.created_at)
-
-        return list(query.values('id', 'content', 'user__username', 'created_at')[:50])
-
-    @database_sync_to_async
     def get_user_or_404(self, user_id):
         try:
             return User.objects.get(id=user_id)
@@ -197,33 +183,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     @transaction.atomic
     def remove_user_from_room(self, room_id, user_id):
         ChatRoomParticipant.objects.filter(user=user_id, chat_room=room_id).delete()
-
-    async def get_recent_messages_from_cache(self):
-        unique_key = f'{self.group_name}_messages'
-        return await sync_to_async(cache.get)(unique_key, [])
-
-    async def save_message(self, redis_message):
-        unique_key = f'{self.group_name}_messages'
-        cached_messages = await sync_to_async(cache.get)(unique_key, [])
-
-        if len(cached_messages) >= 20:
-            oldest_message = cached_messages.pop(0)
-            await self.save_message_to_db(oldest_message)
-
-        cached_messages.append(redis_message)
-        await sync_to_async(cache.set)(unique_key, cached_messages, timeout=None)
-
-    @database_sync_to_async
-    @transaction.atomic
-    def save_message_to_db(self, message):
-        chat_room = ChatRoom.objects.get(id=message['room_id'])
-        user = User.objects.get(id=message['user_id'])
-        Message.objects.create(
-            chat_room=chat_room,
-            user=user,
-            content=message['message'],
-            created_at=message['created_at']
-        )
 
     @database_sync_to_async
     @transaction.atomic

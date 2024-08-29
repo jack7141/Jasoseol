@@ -10,6 +10,8 @@ https://docs.djangoproject.com/en/4.1/howto/deployment/wsgi/
 import os
 import django
 
+from common.middleware import RedisCacheASGIMiddleware
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'api_backend.settings')
 django.setup()
 
@@ -28,12 +30,11 @@ combined_websocket_urlpatterns = chat_routing.websocket_urlpatterns + \
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket":
+    "websocket": RedisCacheASGIMiddleware(
         AuthMiddlewareStack(
-            AllowedHostsOriginValidator(
-            URLRouter(
-                combined_websocket_urlpatterns
+                    URLRouter(
+                        combined_websocket_urlpatterns
+                )
             )
         ),
-    ),
 })
