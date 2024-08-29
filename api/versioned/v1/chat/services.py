@@ -10,9 +10,23 @@ class ChatService:
         self.user_id = user_id
         self.redis_middleware = RedisCacheASGIMiddleware(None)
 
+
+    @database_sync_to_async
+    def initialize(self):
+        self.room = ChatRoom.objects.get(id=self.room_id)
+        self.user = User.objects.get(id=self.user_id)
+        self.room.add_user(self.user)
+        self.user.update_last_active()
+
+
     @database_sync_to_async
     def check_room_exists(self):
         return ChatRoom.room_exists(self.room_id)
+
+
+    @database_sync_to_async
+    def disconnect_user(self):
+        self.room.remove_user(self.user)
 
     @database_sync_to_async
     def get_user(self):
