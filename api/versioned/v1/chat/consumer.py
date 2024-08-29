@@ -17,7 +17,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             await self.channel_layer.group_add(self.group_name, self.channel_name)
             await self.accept()
-
             messages = await self.chat_service.get_previous_messages()
             for message in messages:
                 await self.send_json(message)
