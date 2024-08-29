@@ -18,10 +18,7 @@ class RedisCacheASGIMiddleware:
 
     async def websocket_middleware(self, scope, receive, send):
         async def wrapped_receive():
-            message = await receive()
-            if message['type'] == 'websocket.receive':
-                await self.cache_message(scope, message)
-            return message
+            return await receive()
 
         async def wrapped_send(message):
             if message['type'] == 'websocket.send':

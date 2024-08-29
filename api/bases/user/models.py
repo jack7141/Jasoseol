@@ -10,5 +10,10 @@ class User(models.Model):
     connected_at = models.DateTimeField(auto_now_add=True)
     last_active = models.DateTimeField(auto_now_add=True)
 
+    def update_last_active(self):
+        self.last_active = arrow.now('Asia/Seoul').datetime
+        self.save()
+
+
     def __str__(self):
         return self.username
