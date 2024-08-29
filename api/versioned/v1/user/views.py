@@ -38,6 +38,6 @@ class ActiveUsersView(MappingViewSetMixin, viewsets.GenericViewSet):
 
     def get_user_active(self, request, *args, **kwargs):
         thirty_minutes_ago = arrow.now("Asia/Seoul").shift(minutes=-30).datetime
-        active_users = User.objects.filter(last_active__gte=thirty_minutes_ago)
+        active_users = User.objects.filter(last_active__gte=thirty_minutes_ago).order_by('-last_active')
         serializer = self.get_serializer(active_users, many=True)
         return Response(serializer.data)

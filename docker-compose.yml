@@ -4,9 +4,43 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: music-app
+    image: jasoseol
     environment:
-      - PROJECT_ENV="base"
+      - PROJECT_ENV=local
       - TZ=Asia/Seoul
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=changeme
+      - CONN_MAX_AGE=600
     ports:
-      - "8000:80"
+      - "8000:8000"
+    volumes:
+      - .:/webapp/server
+    depends_on:
+      - redis
+
+
+  redis:
+    image: redis:6.2
+    command: ["redis-server", "--requirepass", "changeme"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://django:8000
+      - REACT_WS_APP_API_URL=ws://django:8000
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - django
+
+volumes:
+  redis_data:
