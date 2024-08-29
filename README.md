@@ -20,7 +20,26 @@ Swagger API 문서 주소는 `/api/v{version}/swagger`입니다.
 
 
 실행
-> DJANGO_SETTINGS_MODULE=api_backend.settings uvicorn api_backend.asgi:application --host localhost --port 8000 --reload
+> api_backend 폴더 > secrets.json에서 DB 정보를 입력합니다.
+> 
+> EX
+> 
+> "NAME": "jasoseol",
+> 
+> "USER": "#ROOT",
+> 
+> "PASSWORD": "password",
+> 
+> "HOST": "#HOST",
+> 
+> 
+> frontend와 함께 실행이 되므로 localhost:80 에서 실행이 됩니다.
+> 
+> ASGI를 활용하여 비동기 통신을 하려 하였으며, redis를 활용하여 channel layer를 구성하였고, DB 과부하를 방지하고자 최근 100건의 
+> 
+> 메세지는 redis cache를 활용하여 저장하고 나머지 데이터는 DB에서 조회하는 구조로 처리하였습니다.
+> 
+> 대용량에 따라서는 샤딩과 celery 비동기 task를 활용하여 처리할 수 있을것같으나, 간단하게 구성하기 위해서 기술 스택만 적었습니다.
 
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 

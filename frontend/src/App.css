@@ -1,0 +1,39 @@
+/* src/App.css */
+
+.App {
+  text-align: center;
+}
+
+#chat-log {
+  border: 1px solid #ddd;
+  height: 300px;
+  overflow-y: scroll;
+  margin: 20px;
+  padding: 10px;
+}
+
+#chat-message-input {
+  width: 80%;
+}
+
+#send-message-button {
+  width: 15%;
+  margin-left: 5px;
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+li {
+  cursor: pointer;
+  padding: 10px;
+  margin: 5px 0;
+  background-color: #f4f4f4;
+  border: 1px solid #ddd;
+}
+
+li:hover {
+  background-color: #e0e0e0;
+}
